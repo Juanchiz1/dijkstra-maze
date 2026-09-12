@@ -1,7 +1,5 @@
 import pygame
 
-CELL_SIZE = 40
-
 COLOR_COSTO_1 = (200, 230, 200)
 COLOR_COSTO_2 = (230, 220, 150)
 COLOR_COSTO_3 = (230, 160, 120)
@@ -16,7 +14,7 @@ class Celda:
     def __init__(self, fila, col, costo):
         self.fila = fila
         self.col = col
-        self.costo = costo  # 0 = muro (intransitable)
+        self.costo = costo
 
     def es_muro(self):
         return self.costo == 0
@@ -36,7 +34,6 @@ class Celda:
 
 class Grid:
     def __init__(self, mapa):
-        # mapa: lista de listas de enteros (0 = muro, 1-4 = costo)
         self.filas = len(mapa)
         self.columnas = len(mapa[0])
         self.celdas = [
@@ -50,12 +47,12 @@ class Grid:
     def dentro_del_grid(self, fila, col):
         return 0 <= fila < self.filas and 0 <= col < self.columnas
 
-    def dibujar(self, pantalla, origen=None, destino=None):
+    def dibujar(self, pantalla, cell_size, origen=None, destino=None):
         for fila in self.celdas:
             for celda in fila:
-                x = celda.col * CELL_SIZE
-                y = celda.fila * CELL_SIZE
-                rect = pygame.Rect(x, y, CELL_SIZE, CELL_SIZE)
+                x = celda.col * cell_size
+                y = celda.fila * cell_size
+                rect = pygame.Rect(x, y, cell_size, cell_size)
 
                 if origen and (celda.fila, celda.col) == origen:
                     color = COLOR_ORIGEN

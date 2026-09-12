@@ -1,5 +1,4 @@
 import pygame
-from grid import CELL_SIZE
 
 COLOR_AVATAR = (250, 220, 40)
 
@@ -21,7 +20,8 @@ class Avatar:
         self.fila = nueva_fila
         self.col = nueva_col
 
-    def dibujar(self, pantalla):
-        centro_x = self.col * CELL_SIZE + CELL_SIZE // 2
-        centro_y = self.fila * CELL_SIZE + CELL_SIZE // 2
-        pygame.draw.circle(pantalla, COLOR_AVATAR, (centro_x, centro_y), CELL_SIZE // 3)
+    def dibujar(self, pantalla, cell_size):
+        centro_x = self.col * cell_size + cell_size // 2
+        centro_y = self.fila * cell_size + cell_size // 2
+        radio = max(cell_size // 3, 4)
+        pygame.draw.circle(pantalla, COLOR_AVATAR, (centro_x, centro_y), radio)
