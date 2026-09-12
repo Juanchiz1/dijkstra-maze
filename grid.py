@@ -1,13 +1,14 @@
 import pygame
 
-COLOR_COSTO_1 = (200, 230, 200)
-COLOR_COSTO_2 = (230, 220, 150)
-COLOR_COSTO_3 = (230, 160, 120)
-COLOR_COSTO_4 = (180, 90, 90)
-COLOR_MURO = (30, 30, 30)
-COLOR_BORDE = (60, 60, 60)
-COLOR_ORIGEN = (60, 120, 220)
-COLOR_DESTINO = (170, 60, 200)
+COLOR_COSTO_1 = (222, 235, 230)
+COLOR_COSTO_2 = (180, 210, 220)
+COLOR_COSTO_3 = (130, 170, 195)
+COLOR_COSTO_4 = (85, 120, 155)
+COLOR_MURO = (18, 18, 18)
+COLOR_BORDE = (50, 50, 50)
+COLOR_DESTINO = (210, 60, 220)
+COLOR_DESTINO_BORDE = (255, 255, 255)
+COLOR_PISTA = (255, 230, 40)
 
 
 class Celda:
@@ -47,19 +48,26 @@ class Grid:
     def dentro_del_grid(self, fila, col):
         return 0 <= fila < self.filas and 0 <= col < self.columnas
 
-    def dibujar(self, pantalla, cell_size, origen=None, destino=None):
+    def dibujar(self, pantalla, cell_size, offset_x=0, offset_y=0, destino=None, camino_pista=None):
+        camino_set = set(camino_pista) if camino_pista else set()
+
         for fila in self.celdas:
             for celda in fila:
-                x = celda.col * cell_size
-                y = celda.fila * cell_size
+                x = offset_x + celda.col * cell_size
+                y = offset_y + celda.fila * cell_size
                 rect = pygame.Rect(x, y, cell_size, cell_size)
 
-                if origen and (celda.fila, celda.col) == origen:
-                    color = COLOR_ORIGEN
-                elif destino and (celda.fila, celda.col) == destino:
-                    color = COLOR_DESTINO
-                else:
-                    color = celda.color()
+                pygame.draw.rect(pantalla, celda.color(), rect)
 
-                pygame.draw.rect(pantalla, color, rect)
+                if (celda.fila, celda.col) in camino_set:
+                    pygame.draw.rect(pantalla, COLOR_PISTA, rect, 3)
+
                 pygame.draw.rect(pantalla, COLOR_BORDE, rect, 1)
+
+        if destino:
+            fila_d, col_d = destino
+            x = offset_x + col_d * cell_size + cell_size // 2
+            y = offset_y + fila_d * cell_size + cell_size // 2
+            radio = max(cell_size // 3, 5)
+            pygame.draw.circle(pantalla, COLOR_DESTINO_BORDE, (x, y), radio + 2)
+            pygame.draw.circle(pantalla, COLOR_DESTINO, (x, y), radio)
