@@ -5,6 +5,7 @@ from avatar import Avatar, VELOCIDAD_BASE
 from enemigo import Enemigo
 from dijkstra import dijkstra, reconstruir_camino
 from niveles import crear_todos_los_niveles
+from progreso import cargar_progreso, guardar_partida
 
 pygame.init()
 fuente = pygame.font.SysFont("arial", 20)
@@ -24,7 +25,10 @@ pygame.display.set_caption("Dijkstra Maze")
 class Juego:
     def __init__(self):
         self.vidas = 3
+        self.puntaje = 0
+        self.pistas_restantes = 3
         self.indice_nivel = 0
+        self.progreso_guardado = cargar_progreso()
         self.estado = "historia"
         self.cargar_nivel(self.indice_nivel)
 
@@ -49,11 +53,15 @@ class Juego:
 
     def calcular_pista(self):
         _, previos = dijkstra(self.grid, (self.avatar.fila, self.avatar.col))
-        self.camino_pista = reconstruir_camino(previos, (self.avatar.fila, self.avatar.col), self.nivel["meta"])
+        self.camino_pista = reconstruir_camino(previos, (self.avatar.fila, self.avatar.col), self.nivel["meta"])    
 
     def alternar_pista(self):
+        if not self.mostrar_pista and self.pistas_restantes <= 0:
+            return  # no quedan pistas, no hace nada
+
         self.mostrar_pista = not self.mostrar_pista
         if self.mostrar_pista:
+            self.pistas_restantes -= 1
             self.calcular_pista()
         else:
             self.camino_pista = None
@@ -62,20 +70,26 @@ class Juego:
         self.vidas -= 1
         if self.vidas <= 0:
             self.estado = "derrota"
+            guardar_partida(self.puntaje, self.nivel["numero"])
         else:
             self.avatar.reposicionar(*self.nivel["inicio"])
             self.avatar.resetear_velocidad()
 
     def avanzar_nivel(self):
+        self.puntaje += 100 * self.nivel["numero"]
         if self.indice_nivel + 1 < len(niveles):
             self.indice_nivel += 1
             self.cargar_nivel(self.indice_nivel)
         else:
             self.estado = "victoria"
+            guardar_partida(self.puntaje, self.nivel["numero"])
 
     def reiniciar_juego(self):
         self.vidas = 3
+        self.puntaje = 0
+        self.pistas_restantes = 3
         self.indice_nivel = 0
+        self.progreso_guardado = cargar_progreso()
         self.cargar_nivel(0)
 
     def actualizar_jugando(self):
@@ -99,13 +113,15 @@ class Juego:
                 if avatar_movio:
                     enemigo.vivo = False
                     self.avatar.aumentar_velocidad()
+                    self.puntaje += 50
                 else:
                     self.perder_vida()
                     return
 
     def dibujar_hud(self, superficie_hud):
         superficie_hud.fill((15, 15, 20))
-        texto = f"Nivel {self.nivel['numero']}/10   Vidas: {self.vidas}   Pista (H): {'ON' if self.mostrar_pista else 'OFF'}"
+        texto = (f"Nivel {self.nivel['numero']}/10   Vidas: {self.vidas}   "
+                 f"Puntaje: {self.puntaje}   Pistas: {self.pistas_restantes}")
         render = fuente.render(texto, True, (255, 255, 255))
         superficie_hud.blit(render, (10, 14))
 
@@ -120,11 +136,17 @@ class Juego:
     def dibujar_final(self, pantalla, mensaje):
         pantalla.fill(COLOR_FONDO)
         render = fuente_grande.render(mensaje, True, (255, 255, 255))
-        rect = render.get_rect(center=(pantalla.get_width() // 2, pantalla.get_height() // 2 - 20))
+        rect = render.get_rect(center=(pantalla.get_width() // 2, pantalla.get_height() // 2 - 50))
         pantalla.blit(render, rect)
-        render2 = fuente.render("Presiona ENTER para reiniciar", True, (200, 200, 200))
-        rect2 = render2.get_rect(center=(pantalla.get_width() // 2, pantalla.get_height() // 2 + 30))
+
+        texto_puntaje = f"Tu puntaje: {self.puntaje}   Mejor puntaje: {self.progreso_guardado['mejor_puntaje']}"
+        render2 = fuente.render(texto_puntaje, True, (220, 220, 220))
+        rect2 = render2.get_rect(center=(pantalla.get_width() // 2, pantalla.get_height() // 2))
         pantalla.blit(render2, rect2)
+
+        render3 = fuente.render("Presiona ENTER para reiniciar", True, (200, 200, 200))
+        rect3 = render3.get_rect(center=(pantalla.get_width() // 2, pantalla.get_height() // 2 + 40))
+        pantalla.blit(render3, rect3)
 
 
 juego = Juego()
