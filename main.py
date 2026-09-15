@@ -24,13 +24,15 @@ pygame.display.set_caption("Dijkstra Maze")
 
 class Juego:
     def __init__(self):
+        self.progreso_guardado = cargar_progreso()
+        self.estado = "menu"
+        
+    def iniciar_juego(self):
         self.vidas = 3
         self.puntaje = 0
         self.pistas_restantes = 3
         self.indice_nivel = 0
-        self.progreso_guardado = cargar_progreso()
-        self.estado = "historia"
-        self.cargar_nivel(self.indice_nivel)
+        self.cargar_nivel(0)    
 
     def cargar_nivel(self, indice):
         self.nivel = niveles[indice]
@@ -70,7 +72,7 @@ class Juego:
         self.vidas -= 1
         if self.vidas <= 0:
             self.estado = "derrota"
-            guardar_partida(self.puntaje, self.nivel["numero"])
+            self.progreso_guardado = guardar_partida(self.puntaje, self.nivel["numero"])
         else:
             self.avatar.reposicionar(*self.nivel["inicio"])
             self.avatar.resetear_velocidad()
@@ -82,15 +84,11 @@ class Juego:
             self.cargar_nivel(self.indice_nivel)
         else:
             self.estado = "victoria"
-            guardar_partida(self.puntaje, self.nivel["numero"])
+            self.progreso_guardado = guardar_partida(self.puntaje, self.nivel["numero"])
 
-    def reiniciar_juego(self):
-        self.vidas = 3
-        self.puntaje = 0
-        self.pistas_restantes = 3
-        self.indice_nivel = 0
+    def volver_al_menu(self):
         self.progreso_guardado = cargar_progreso()
-        self.cargar_nivel(0)
+        self.estado = "menu"
 
     def actualizar_jugando(self):
         avatar_movio = self.avatar.actualizar(self.grid)
@@ -147,6 +145,49 @@ class Juego:
         render3 = fuente.render("Presiona ENTER para reiniciar", True, (200, 200, 200))
         rect3 = render3.get_rect(center=(pantalla.get_width() // 2, pantalla.get_height() // 2 + 40))
         pantalla.blit(render3, rect3)
+        
+    def dibujar_menu(self, pantalla):
+        pantalla.fill(COLOR_FONDO)
+        titulo = fuente_grande.render("Dijkstra Maze", True, (255, 255, 255))
+        rect = titulo.get_rect(center=(pantalla.get_width() // 2, 140))
+        pantalla.blit(titulo, rect)
+
+        opciones = [
+            "ENTER - Jugar",
+            "H - Ver historial de partidas",
+            f"Mejor puntaje: {self.progreso_guardado['mejor_puntaje']}",
+        ]
+        for i, linea in enumerate(opciones):
+            render = fuente.render(linea, True, (220, 220, 220))
+            rect = render.get_rect(center=(pantalla.get_width() // 2, 230 + i * 40))
+            pantalla.blit(render, rect)
+
+    def dibujar_historial(self, pantalla):
+        pantalla.fill(COLOR_FONDO)
+        titulo = fuente_grande.render("Historial de partidas", True, (255, 255, 255))
+        rect = titulo.get_rect(center=(pantalla.get_width() // 2, 60))
+        pantalla.blit(titulo, rect)
+
+        resumen = (f"Mejor puntaje: {self.progreso_guardado['mejor_puntaje']}   "
+                   f"Nivel maximo alcanzado: {self.progreso_guardado['nivel_maximo_alcanzado']}")
+        render_resumen = fuente.render(resumen, True, (200, 200, 200))
+        rect_resumen = render_resumen.get_rect(center=(pantalla.get_width() // 2, 110))
+        pantalla.blit(render_resumen, rect_resumen)
+
+        historial = list(reversed(self.progreso_guardado["historial"]))
+        if not historial:
+            render = fuente.render("Todavia no hay partidas registradas", True, (180, 180, 180))
+            rect = render.get_rect(center=(pantalla.get_width() // 2, 180))
+            pantalla.blit(render, rect)
+        else:
+            for i, partida in enumerate(historial[:8]):
+                linea = f"{partida['fecha']}   Nivel {partida['nivel_alcanzado']}/10   Puntaje: {partida['puntaje']}"
+                render = fuente.render(linea, True, (220, 220, 220))
+                pantalla.blit(render, (pantalla.get_width() // 2 - 220, 160 + i * 32))
+
+        render_volver = fuente.render("ENTER - Volver al menu", True, (180, 180, 180))
+        rect_volver = render_volver.get_rect(center=(pantalla.get_width() // 2, pantalla.get_height() - 40))
+        pantalla.blit(render_volver, rect_volver)    
 
 
 juego = Juego()
@@ -159,23 +200,38 @@ while corriendo:
             corriendo = False
 
         if evento.type == pygame.KEYDOWN:
-            if juego.estado == "historia" and evento.key == pygame.K_SPACE:
+            if juego.estado == "menu":
+                if evento.key == pygame.K_RETURN:
+                    juego.iniciar_juego()
+                elif evento.key == pygame.K_h:
+                    juego.estado = "historial"
+
+            elif juego.estado == "historial":
+                if evento.key == pygame.K_RETURN:
+                    juego.estado = "menu"
+
+            elif juego.estado == "historia" and evento.key == pygame.K_SPACE:
                 juego.estado = "jugando"
 
             elif juego.estado == "jugando" and evento.key == pygame.K_h:
                 juego.alternar_pista()
 
             elif juego.estado in ("victoria", "derrota") and evento.key == pygame.K_RETURN:
-                juego.reiniciar_juego()
+                juego.volver_al_menu()
 
-    if juego.estado == "historia":
+    if juego.estado == "menu":
+        juego.dibujar_menu(pantalla)
+
+    elif juego.estado == "historial":
+        juego.dibujar_historial(pantalla)
+
+    elif juego.estado == "historia":
         juego.dibujar_historia(pantalla)
 
     elif juego.estado == "jugando":
         juego.actualizar_jugando()
 
         pantalla.fill(COLOR_FONDO)
-
         superficie_hud = pantalla.subsurface((0, 0, VENTANA_ANCHO, ALTO_HUD))
         juego.dibujar_hud(superficie_hud)
 
