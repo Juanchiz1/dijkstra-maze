@@ -1,6 +1,9 @@
 import random
 from collections import deque
+from grid import Grid
+from dijkstra import dijkstra
 
+MARGEN_ENERGIA = 1.8  # energia disponible = costo optimo x este margen
 NIVEL_CONFIGS = [
     {"numero": 1,  "filas": 10, "columnas": 12, "densidad_muros": 0.15, "enemigos": 0, "semilla": 1,
      "historia": "La tortuga quiere volver a su nido, donde la esperan sus huevos."},
@@ -22,6 +25,7 @@ NIVEL_CONFIGS = [
      "historia": "La guardia del nido enemigo se intensifica."},
     {"numero": 10, "filas": 28, "columnas": 30, "densidad_muros": 0.40, "enemigos": 3, "semilla": 10,
      "historia": "Ultimo tramo. Tres cangrejos protegen el camino final."},
+    
 ]
 
 
@@ -43,6 +47,10 @@ def _hay_camino(mapa, inicio, meta):
                     cola.append((nf, nc))
     return False
 
+def _costo_optimo(mapa, inicio, meta):
+    grid_temporal = Grid(mapa)
+    distancias, _ = dijkstra(grid_temporal, inicio)
+    return distancias.get(meta)
 
 def _celdas_libres(mapa, excluir):
     libres = []
@@ -86,7 +94,10 @@ def crear_nivel(config):
         config["filas"], config["columnas"], config["densidad_muros"], config["semilla"]
     )
 
-    random.seed(config["semilla"] + 1000)  # semilla distinta para no repetir el patron del mapa
+    costo_optimo = _costo_optimo(mapa, inicio, meta)
+    energia_maxima = max(20, round(costo_optimo * MARGEN_ENERGIA))
+
+    random.seed(config["semilla"] + 1000)
     libres = _celdas_libres(mapa, excluir={inicio, meta})
     random.shuffle(libres)
     posiciones_enemigos = libres[: config["enemigos"]]
@@ -98,6 +109,8 @@ def crear_nivel(config):
         "meta": meta,
         "posiciones_enemigos": posiciones_enemigos,
         "historia": config["historia"],
+        "costo_optimo": costo_optimo,
+        "energia_maxima": energia_maxima,
     }
 
 

@@ -37,10 +37,11 @@ class Juego:
     def cargar_nivel(self, indice):
         self.nivel = niveles[indice]
         self.grid = Grid(self.nivel["mapa"])
-        self.avatar = Avatar(*self.nivel["inicio"])
+        self.avatar = Avatar(*self.nivel["inicio"], energia_maxima=self.nivel["energia_maxima"])
         self.enemigos = [Enemigo(f, c) for (f, c) in self.nivel["posiciones_enemigos"]]
         self.mostrar_pista = False
         self.camino_pista = None
+        self.costo_pista = None
 
         self.cell_size = min(
             VENTANA_ANCHO // self.grid.columnas,
@@ -54,8 +55,9 @@ class Juego:
         self.estado = "historia"
 
     def calcular_pista(self):
-        _, previos = dijkstra(self.grid, (self.avatar.fila, self.avatar.col))
-        self.camino_pista = reconstruir_camino(previos, (self.avatar.fila, self.avatar.col), self.nivel["meta"])    
+        distancias, previos = dijkstra(self.grid, (self.avatar.fila, self.avatar.col))
+        self.camino_pista = reconstruir_camino(previos, (self.avatar.fila, self.avatar.col), self.nivel["meta"])
+        self.costo_pista = distancias.get(self.nivel["meta"])   
 
     def alternar_pista(self):
         if not self.mostrar_pista and self.pistas_restantes <= 0:
@@ -76,6 +78,7 @@ class Juego:
         else:
             self.avatar.reposicionar(*self.nivel["inicio"])
             self.avatar.resetear_velocidad()
+            self.avatar.resetear_energia()
 
     def avanzar_nivel(self):
         self.puntaje += 100 * self.nivel["numero"]
@@ -100,6 +103,10 @@ class Juego:
             self.avanzar_nivel()
             return
 
+        if self.avatar.energia_actual <= 0:
+            self.perder_vida()
+            return
+
         posicion_avatar = (self.avatar.fila, self.avatar.col)
         for enemigo in self.enemigos:
             enemigo_movio = enemigo.actualizar(self.grid, posicion_avatar)
@@ -111,6 +118,7 @@ class Juego:
                 if avatar_movio:
                     enemigo.vivo = False
                     self.avatar.aumentar_velocidad()
+                    self.avatar.restaurar_energia(20)
                     self.puntaje += 50
                 else:
                     self.perder_vida()
@@ -119,16 +127,25 @@ class Juego:
     def dibujar_hud(self, superficie_hud):
         superficie_hud.fill((15, 15, 20))
         texto = (f"Nivel {self.nivel['numero']}/10   Vidas: {self.vidas}   "
+                 f"Energia: {self.avatar.energia_actual}/{self.avatar.energia_maxima}   "
                  f"Puntaje: {self.puntaje}   Pistas: {self.pistas_restantes}")
+        if self.mostrar_pista and self.costo_pista is not None:
+            texto += f"   Costo ruta: {self.costo_pista}"
         render = fuente.render(texto, True, (255, 255, 255))
         superficie_hud.blit(render, (10, 14))
 
     def dibujar_historia(self, pantalla):
         pantalla.fill(COLOR_FONDO)
-        lineas = [self.nivel["historia"], "", "Presiona ESPACIO para continuar"]
+        lineas = [
+            self.nivel["historia"],
+            "",
+            f"Costo optimo (Dijkstra): {self.nivel['costo_optimo']}    Energia disponible: {self.nivel['energia_maxima']}",
+            "",
+            "Presiona ESPACIO para continuar",
+        ]
         for i, linea in enumerate(lineas):
             render = fuente_grande.render(linea, True, (255, 255, 255))
-            rect = render.get_rect(center=(pantalla.get_width() // 2, 150 + i * 45))
+            rect = render.get_rect(center=(pantalla.get_width() // 2, 150 + i * 40))
             pantalla.blit(render, rect)
 
     def dibujar_final(self, pantalla, mensaje):

@@ -8,9 +8,11 @@ VELOCIDAD_MINIMA = 60
 
 
 class Avatar:
-    def __init__(self, fila_inicial, col_inicial):
+    def __init__(self, fila_inicial, col_inicial, energia_maxima=100):
         self.fila = fila_inicial
         self.col = col_inicial
+        self.energia_maxima = energia_maxima
+        self.energia_actual = energia_maxima
         self.intervalo_movimiento = VELOCIDAD_BASE
         self.ultimo_movimiento = pygame.time.get_ticks()
 
@@ -20,6 +22,12 @@ class Avatar:
 
     def resetear_velocidad(self):
         self.intervalo_movimiento = VELOCIDAD_BASE
+
+    def resetear_energia(self):
+        self.energia_actual = self.energia_maxima
+
+    def restaurar_energia(self, cantidad):
+        self.energia_actual = min(self.energia_maxima, self.energia_actual + cantidad)
 
     def aumentar_velocidad(self):
         self.intervalo_movimiento = max(VELOCIDAD_MINIMA, int(self.intervalo_movimiento * 0.85))
@@ -48,10 +56,13 @@ class Avatar:
 
         if not grid.dentro_del_grid(nueva_fila, nueva_col):
             return False
-        if grid.celda(nueva_fila, nueva_col).es_muro():
+
+        celda_destino = grid.celda(nueva_fila, nueva_col)
+        if celda_destino.es_muro():
             return False
 
         self.fila, self.col = nueva_fila, nueva_col
+        self.energia_actual -= celda_destino.costo
         self.ultimo_movimiento = ahora
         return True
 
